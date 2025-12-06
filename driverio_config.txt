@@ -1,0 +1,6 @@
+# Driver IO Board Configuration
+# Update these values with your Raspberry Pi 4 details
+
+DRIVERIO_IP=192.168.1.XXX
+DRIVERIO_USER=pi
+DRIVERIO_PASS=yourpassword

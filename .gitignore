@@ -1,0 +1,25 @@
+# VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+
+# MicroPython
+*.mpy
+
+# Personal/sensitive files
+wifi_config.txt
+
+# OS
+.DS_Store
+Thumbs.db

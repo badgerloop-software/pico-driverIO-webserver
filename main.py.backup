@@ -1,51 +1,23 @@
 """
 MicroPython Web Server for Raspberry Pi Pico W
-BSR Driver IO Remote Control Dashboard
+Driver IO Remote Control Dashboard
 
-This script serves a dashboard for remote control of a Raspberry Pi 4.
+This script starts a web server that serves a dashboard for remote control
+of a Raspberry Pi 4 (startup/shutdown functionality).
 """
 
 import network
 import socket
 import time
 from machine import Pin
-import sys
 
 # ============================================================================
 # GPIO PIN CONFIGURATION
 # ============================================================================
-BOOT_PIN = 8  # GPIO pin 8 to trigger Pi boot
-REBOOT_PIN = 9  # GPIO pin 9 to trigger Pi reboot
-
-
-def read_driverio_config(filename='driverio_config.txt'):
-    """
-    Read Driver IO board configuration from file.
-    Expected format:
-    DRIVERIO_IP=192.168.1.x
-    DRIVERIO_USER=username
-    DRIVERIO_PASS=password
-    
-    Returns:
-        dict: Configuration with keys 'ip', 'user', 'pass'
-    """
-    config = {}
-    try:
-        with open(filename, 'r') as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith('#'):
-                    if '=' in line:
-                        key, value = line.split('=', 1)
-                        if key == 'DRIVERIO_IP':
-                            config['ip'] = value
-                        elif key == 'DRIVERIO_USER':
-                            config['user'] = value
-                        elif key == 'DRIVERIO_PASS':
-                            config['pass'] = value
-    except Exception as e:
-        print(f"Error reading Driver IO config: {e}")
-    return config
+# TODO: Define your GPIO pins here for controlling the Raspberry Pi 4
+# Example:
+# BOOT_PIN = Pin(16, Pin.OUT)  # GPIO pin to trigger Pi boot
+# REBOOT_PIN = Pin(17, Pin.OUT)  # GPIO pin to trigger Pi reboot
 
 
 def parse_wifi_config(filename="wifi_config.txt"):
@@ -127,7 +99,7 @@ def get_html_page():
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BSR Driver IO Remote Control</title>
+    <title>Driver IO Remote Control Dashboard</title>
     <style>
         * {
             box-sizing: border-box;
@@ -144,6 +116,10 @@ def get_html_page():
             align-items: center;
             padding: 20px;
         }
+        .logo {
+            max-width: 200px;
+            margin-bottom: 20px;
+        }
         h1 {
             margin-bottom: 40px;
             text-align: center;
@@ -153,7 +129,7 @@ def get_html_page():
         .button-container {
             display: flex;
             flex-direction: column;
-            gap: 40px;
+            gap: 20px;
             width: 100%;
             max-width: 300px;
         }
@@ -161,7 +137,7 @@ def get_html_page():
             padding: 20px 40px;
             font-size: 18px;
             font-weight: bold;
-            border: 3px solid;
+            border: 3px solid #CC0000;
             border-radius: 10px;
             cursor: pointer;
             transition: all 0.3s ease;
@@ -169,30 +145,19 @@ def get_html_page():
             text-align: center;
         }
         .btn-boot {
-            background-color: #28a745;
+            background-color: #CC0000;
             color: white;
-            border-color: #28a745;
         }
         .btn-boot:hover {
-            background-color: #218838;
+            background-color: #990000;
             transform: scale(1.05);
         }
         .btn-reboot {
             background-color: white;
             color: #CC0000;
-            border-color: #CC0000;
         }
         .btn-reboot:hover {
             background-color: #f0f0f0;
-            transform: scale(1.05);
-        }
-        .btn-shutdown {
-            background-color: #CC0000;
-            color: white;
-            border-color: #CC0000;
-        }
-        .btn-shutdown:hover {
-            background-color: #A00000;
             transform: scale(1.05);
         }
         .status {
@@ -207,11 +172,11 @@ def get_html_page():
     </style>
 </head>
 <body>
-    <h1>BSR Driver IO Remote Control</h1>
+    <img src="data:image/jpeg;base64,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
+    <h1>Driver IO Remote Control Dashboard</h1>
     <div class="button-container">
         <a href="/boot" class="btn btn-boot">Boot up Pi</a>
         <a href="/reboot" class="btn btn-reboot">Soft Reboot</a>
-        <a href="/shutdown" class="btn btn-shutdown">Shutdown Pi</a>
     </div>
     <div class="status" id="status">
         Ready for commands
@@ -237,14 +202,13 @@ def get_response_page(action):
         action_text = "Soft Reboot"
     else:
         action_text = "Shutdown Pi"
-    
     html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="refresh" content="3;url=/">
-    <title>BSR Driver IO Remote Control</title>
+    <title>Driver IO remote control dashboard</title>
     <style>
         body {{
             font-family: Arial, sans-serif;
@@ -275,7 +239,7 @@ def get_response_page(action):
     </style>
 </head>
 <body>
-    <h1>BSR Driver IO Remote Control</h1>
+    <h1>Driver IO remote control dashboard</h1>
     <div class="message">
         <p class="success">Command sent: {action_text}</p>
         <p>Redirecting back to dashboard...</p>
@@ -289,76 +253,40 @@ def handle_boot():
     """
     Handle the Boot up Pi action.
     
-    This function triggers GPIO pin 8 to boot up the Raspberry Pi 4.
+    This function triggers the GPIO pin to boot up the Raspberry Pi 4.
     """
     print("Boot up Pi command received")
-    boot_pin = Pin(BOOT_PIN, Pin.OUT)
-    boot_pin.value(1)
-    time.sleep(2)
-    boot_pin.value(0)
-    print("Boot signal sent")
+    
+    # ========================================================================
+    # TODO: Add GPIO control code here to boot up the Raspberry Pi 4
+    # ========================================================================
+    # Example:
+    # BOOT_PIN.value(1)  # Set pin HIGH to trigger boot
+    # time.sleep(0.5)    # Hold for 500ms
+    # BOOT_PIN.value(0)  # Set pin LOW
+    # ========================================================================
+    
+    pass
 
 
 def handle_reboot():
     """
     Handle the Soft Reboot action.
     
-    This function triggers GPIO pin 9 to reboot the Raspberry Pi 4.
+    This function triggers the GPIO pin to soft reboot the Raspberry Pi 4.
     """
     print("Soft Reboot command received")
-    reboot_pin = Pin(REBOOT_PIN, Pin.OUT)
-    reboot_pin.value(1)
-    time.sleep(2)
-    reboot_pin.value(0)
-    print("Soft reboot signal sent")
-
-
-def handle_shutdown():
-    """
-    Handle the Shutdown action.
     
-    This function attempts to shutdown the Raspberry Pi 4 over the network
-    by sending a command to its IP address. Does NOT trigger any GPIO pins.
-    """
-    print("Shutdown command received")
+    # ========================================================================
+    # TODO: Add GPIO control code here to soft reboot the Raspberry Pi 4
+    # ========================================================================
+    # Example:
+    # REBOOT_PIN.value(1)  # Set pin HIGH to trigger reboot
+    # time.sleep(0.5)      # Hold for 500ms
+    # REBOOT_PIN.value(0)  # Set pin LOW
+    # ========================================================================
     
-    # Read Driver IO config
-    config = read_driverio_config()
-    
-    if not config.get('ip'):
-        print("Error: Driver IO IP not configured in driverio_config.txt")
-        return False
-    
-    driverio_ip = config['ip']
-    driverio_user = config.get('user', 'pi')
-    driverio_pass = config.get('pass', '')
-    
-    print(f"Attempting to shutdown Driver IO at {driverio_ip}")
-    
-    # Try to test connectivity to the Driver IO board
-    try:
-        # Create a socket to test connectivity on SSH port
-        test_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        test_sock.settimeout(5)
-        result = test_sock.connect_ex((driverio_ip, 22))  # Test SSH port
-        test_sock.close()
-        
-        if result == 0:
-            print(f"Driver IO at {driverio_ip} is reachable on SSH port")
-            # Note: MicroPython doesn't have built-in SSH client
-            # You would need to implement SSH protocol or use a different method
-            # For now, we just confirm connectivity
-            print("WARNING: SSH shutdown not implemented in MicroPython")
-            print("Consider implementing REST API on Pi 4 for shutdown commands")
-            return True
-        else:
-            print(f"Driver IO at {driverio_ip} is not reachable")
-            return False
-            
-    except Exception as e:
-        print(f"Error connecting to Driver IO: {e}")
-        sys.print_exception(e)
-        return False
+    pass
 
 
 def start_server(ip_address, port=80):
@@ -385,35 +313,34 @@ def start_server(ip_address, port=80):
             request = client.recv(1024).decode("utf-8")
             
             # Parse the request to get the path
+            path = "/"
             try:
                 request_line = request.split("\r\n")[0]
-                print(f"Request: {request_line}")
-                
-                if request_line.startswith('GET /boot'):
-                    print("Boot endpoint hit")
-                    handle_boot()
-                    response = get_response_page('boot')
-                elif request_line.startswith('GET /reboot'):
-                    print("Reboot endpoint hit")
-                    handle_reboot()
-                    response = get_response_page('reboot')
-                elif request_line.startswith('GET /shutdown'):
-                    print("Shutdown endpoint hit")
-                    handle_shutdown()
-                    response = get_response_page('shutdown')
-                else:
-                    response = get_html_page()
+                parts = request_line.split(" ")
+                if len(parts) >= 2:
+                    path = parts[1]
             except (IndexError, ValueError):
+                # Handle malformed requests gracefully
+                path = "/"
+            
+            # Handle different routes
+            if path == "/boot":
+                handle_boot()
+                response = get_response_page("boot")
+            elif path == "/reboot":
+                handle_reboot()
+                response = get_response_page("reboot")
+            else:
                 response = get_html_page()
             
-            # Send HTTP response
+            # Send HTTP response (combine headers to avoid partial sends)
             http_response = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nConnection: close\r\n\r\n" + response
             client.sendall(http_response.encode("utf-8"))
+            
             client.close()
             
         except Exception as e:
             print(f"Error handling request: {e}")
-            sys.print_exception(e)
             try:
                 client.close()
             except:
@@ -426,7 +353,7 @@ def main():
     """
     try:
         print("=" * 50)
-        print("BSR Driver IO Remote Control Dashboard")
+        print("Driver IO Remote Control Dashboard")
         print("=" * 50)
         
         # Parse WiFi credentials from config file
@@ -451,6 +378,7 @@ def main():
         
     except Exception as e:
         print(f"FATAL ERROR: {e}")
+        import sys
         sys.print_exception(e)
 
 

@@ -1,0 +1,36 @@
+{
+    "python.linting.enabled": false,
+    "python.languageServer": "None",
+    "micropico.syncFolder": "",
+    "micropico.openOnStart": true,
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.python",
+        "editor.tabSize": 4,
+        "editor.insertSpaces": true
+    },
+    "files.associations": {
+        "*.py": "python"
+    },
+    "micropico.syncFileIgnoreRegex": [
+        ".vscode",
+        ".gitignore",
+        ".git",
+        "env",
+        "venv",
+        "__pycache__",
+        ".pytest_cache",
+        "*.pyc"
+    ],
+    "micropico.autoConnect": false,
+    "python.analysis.typeCheckingMode": "basic",
+    "python.analysis.diagnosticSeverityOverrides": {
+        "reportMissingModuleSource": "none"
+    },
+    "python.terminal.activateEnvironment": false,
+    "python.analysis.typeshedPaths": [
+        "~/.micropico-stubs/included"
+    ],
+    "python.analysis.extraPaths": [
+        "~/.micropico-stubs/included"
+    ]
+}

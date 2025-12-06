@@ -18,7 +18,7 @@ ENV/
 *.mpy
 
 # Personal/sensitive files
-wifi_config.txt
+*.txt
 
 # OS
 .DS_Store

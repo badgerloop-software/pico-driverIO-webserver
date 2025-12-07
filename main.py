@@ -43,9 +43,7 @@ def load_logo_base64(filename='logo_base64.txt'):
 # ============================================================================
 # GPIO PIN CONFIGURATION
 # ============================================================================
-# GPIO pin 8 connects to Pi 4 BOOT/EEPROM pins (bootloader recovery mode)
-BOOT_PIN = 8
-# GPIO pin 9 connects to Pi 4 RUN/Reset pins (hardware reset/reboot)
+# GPIO pin 9 connects to Pi 4 RUN/Reset pins (hardware reset/boot)
 RUN_PIN = 9
 
 
@@ -259,9 +257,8 @@ def get_html_page():
     """ + logo_html + """
     <h1>BSR Driver IO Remote Control</h1>
     <div class="button-container">
-        <a href="#" onclick="return handleAction('/boot')" class="btn btn-boot">Bootloader Recovery</a>
+        <a href="#" onclick="return handleAction('/boot')" class="btn btn-boot">Boot up Pi</a>
         <a href="#" onclick="return handleAction('/status')" class="btn btn-status">Check Driver IO Status</a>
-        <a href="#" onclick="return handleAction('/reboot')" class="btn btn-reboot">Hardware Reset</a>
     </div>
 </body>
 </html>"""
@@ -282,9 +279,9 @@ def get_response_page(action):
     is_unauthorized = (action == "unauthorized")
     
     if action == "boot":
-        action_text = "Force Bootloader Recovery Mode"
-    elif action == "reboot":
-        action_text = "Hardware Reset (RUN)"
+        action_text = "Boot up Pi - RUN Pin Triggered"
+    elif action == "boot_already_online":
+        action_text = "Pi is Already Online - Boot Aborted"
     elif action == "status":
         action_text = "Status Check - Driver IO is ONLINE"
     elif action == "status_offline":
@@ -381,34 +378,51 @@ def verify_passcode(provided_passcode):
         return False
 
 
-def handle_boot():
+def handle_boot_pi():
     """
-    Handle the BOOT/EEPROM recovery action.
+    Handle the Boot up Pi action (RUN/Reset pin trigger).
     
-    This function shorts the Pi 4 BOOT/EEPROM pins for ~1 second while powered on
-    to force bootloader recovery mode / USB boot mode.
-    """
-    print("BOOT/EEPROM recovery command received")
-    boot_pin = Pin(BOOT_PIN, Pin.OUT)
-    boot_pin.value(1)
-    time.sleep(1.0)  # Short for ~1 second as per Pi 4 spec
-    boot_pin.value(0)
-    print("BOOT signal sent (1.0s)")
-
-
-def handle_reboot():
-    """
-    Handle the RUN/Reset action.
+    This function first pings the Pi 4 to check if it's already running.
+    If the Pi is already online, it aborts to prevent unnecessary reset.
+    If the Pi is offline, it shorts the RUN/Reset pins for ~0.3 seconds
+    to boot up the Pi (same as power-cycle).
     
-    This function shorts the Pi 4 RUN/Reset pins for ~0.3 seconds
-    to trigger an immediate hardware reset (same as power-cycle).
+    Returns:
+        str: Status message ('already_online', 'booted', or 'error')
     """
-    print("RUN/Reset command received")
+    print("Boot up Pi command received")
+    
+    # Read Driver IO config to get IP
+    config = read_driverio_config()
+    
+    if not config.get('ip'):
+        print("Error: Driver IO IP not configured in driverio_config.txt")
+        return 'error'
+    
+    driverio_ip = config['ip']
+    
+    # Safety check: Ping the Pi first
+    print(f"Safety check: Pinging {driverio_ip} to verify Pi is offline...")
+    try:
+        test_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        test_sock.settimeout(3)
+        result = test_sock.connect_ex((driverio_ip, 22))  # Test SSH port
+        test_sock.close()
+        
+        if result == 0:
+            print(f"Pi at {driverio_ip} is already ONLINE - aborting boot command")
+            return 'already_online'
+    except Exception as e:
+        print(f"Ping test failed (Pi likely offline): {e}")
+    
+    # Pi is offline, safe to trigger RUN pin
+    print("Pi is offline, triggering RUN/Reset pin to boot up...")
     reboot_pin = Pin(RUN_PIN, Pin.OUT)
     reboot_pin.value(1)
     time.sleep(0.3)  # Short for 0.1-0.5s as per Pi 4 spec (using 0.3s middle value)
     reboot_pin.value(0)
-    print("RUN/Reset signal sent (0.3s)")
+    print("RUN/Reset signal sent (0.3s) - Pi should boot up now")
+    return 'booted'
 
 
 def handle_status():
@@ -491,18 +505,16 @@ def start_server(ip_address, port=80):
                     except:
                         pass
                 
-                if request_line.startswith('GET /boot'):
-                    print("Boot endpoint hit")
+                if request_line.startswith('GET /boot '):
+                    print("Boot up Pi endpoint hit")
                     if verify_passcode(passcode):
-                        handle_boot()
-                        response = get_response_page('boot')
-                    else:
-                        response = get_response_page('unauthorized')
-                elif request_line.startswith('GET /reboot'):
-                    print("Reboot endpoint hit")
-                    if verify_passcode(passcode):
-                        handle_reboot()
-                        response = get_response_page('reboot')
+                        status = handle_boot_pi()
+                        if status == 'already_online':
+                            response = get_response_page('boot_already_online')
+                        elif status == 'booted':
+                            response = get_response_page('boot')
+                        else:
+                            response = get_response_page('boot')  # Error case
                     else:
                         response = get_response_page('unauthorized')
                 elif request_line.startswith('GET /status'):

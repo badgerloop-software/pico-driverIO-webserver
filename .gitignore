@@ -20,6 +20,9 @@ ENV/
 # Personal/sensitive files
 *.txt
 
+#Logo file
+!logo_base64.txt
+
 # OS
 .DS_Store
 Thumbs.db

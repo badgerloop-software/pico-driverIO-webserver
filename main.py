@@ -11,6 +11,9 @@ import time
 from machine import Pin
 import sys
 
+# Onboard LED for request indication
+LED = Pin("LED", Pin.OUT)
+
 # Optional in-memory logo (base64 PNG) loaded from `logo_base64.txt` on the Pico
 LOGO_BASE64 = None
 
@@ -45,6 +48,22 @@ def load_logo_base64(filename='logo_base64.txt'):
 # ============================================================================
 # GPIO pin 9 connects to Pi 4 RUN/Reset pins (hardware reset/boot)
 RUN_PIN = 9
+
+
+def blink_led(times=1, duration=0.1):
+    """
+    Blink the onboard LED to indicate activity.
+    
+    Args:
+        times: Number of blinks
+        duration: Duration of each blink in seconds
+    """
+    for _ in range(times):
+        LED.on()
+        time.sleep(duration)
+        LED.off()
+        if times > 1:
+            time.sleep(duration)
 
 
 def read_driverio_config(filename='driverio_config.txt'):
@@ -172,8 +191,8 @@ def get_html_page():
         }
         body {
             font-family: Arial, sans-serif;
-            background-color: #ffffff;
-            color: #CC0000;
+            background-color: #000000;
+            color: #FFFFFF;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
@@ -183,7 +202,7 @@ def get_html_page():
         h1 {
             margin-bottom: 40px;
             text-align: center;
-            color: #CC0000;
+            color: #FFFFFF;
             font-size: 28px;
         }
         .button-container {
@@ -214,21 +233,12 @@ def get_html_page():
             transform: scale(1.05);
         }
         .btn-status {
-            background-color: white;
-            color: #CC0000;
-            border-color: #CC0000;
+            background-color: #FF0000;
+            color: white;
+            border-color: #FF0000;
         }
         .btn-status:hover {
-            background-color: #f0f0f0;
-            transform: scale(1.05);
-        }
-        .btn-reboot {
             background-color: #CC0000;
-            color: white;
-            border-color: #CC0000;
-        }
-        .btn-reboot:hover {
-            background-color: #A00000;
             transform: scale(1.05);
         }
         .status {
@@ -257,8 +267,8 @@ def get_html_page():
     """ + logo_html + """
     <h1>BSR Driver IO Remote Control</h1>
     <div class="button-container">
-        <a href="#" onclick="return handleAction('/boot')" class="btn btn-boot">Boot up Pi</a>
-        <a href="#" onclick="return handleAction('/status')" class="btn btn-status">Check Driver IO Status</a>
+        <a href="#" onclick="return handleAction('/boot')" class="btn btn-boot">⏻ Boot up Pi</a>
+        <a href="#" onclick="return handleAction('/status')" class="btn btn-status">ــہہـ٨ــ Check Driver IO Status</a>
     </div>
 </body>
 </html>"""
@@ -301,8 +311,8 @@ def get_response_page(action):
     <style>
         body {{
             font-family: Arial, sans-serif;
-            background-color: #ffffff;
-            color: #CC0000;
+            background-color: #000000;
+            color: #FFFFFF;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
@@ -311,22 +321,22 @@ def get_response_page(action):
             padding: 20px;
         }}
         h1 {{
-            color: #CC0000;
+            color: #FFFFFF;
             margin-bottom: 20px;
         }}
         .message {{
-            background-color: #f5f5f5;
-            border: 2px solid #CC0000;
+            background-color: #1a1a1a;
+            border: 2px solid #FFFFFF;
             padding: 20px 40px;
             border-radius: 10px;
             text-align: center;
         }}
         .success {{
-            color: #CC0000;
+            color: #28a745;
             font-weight: bold;
         }}
         .error {{
-            color: #CC0000;
+            color: #FF0000;
             font-weight: bold;
             font-size: 1.2em;
         }}
@@ -338,9 +348,8 @@ def get_response_page(action):
     
     if is_unauthorized:
         html += f"""
-        <p class="error">ACCESS DENIED</p>
-        <p class="success">{action_text}</p>
-        <p>No command was executed. Redirecting back to dashboard...</p>"""
+        <p class="error">INCORRECT PASSCODE</p>
+        <p>Access denied. Redirecting back to dashboard...</p>"""
     else:
         html += f"""
         <p class="success">Command sent: {action_text}</p>
@@ -490,6 +499,9 @@ def start_server(ip_address, port=80):
             client, client_addr = server_socket.accept()
             print(f"Connection from {client_addr}")
             
+            # Blink LED to indicate request received
+            blink_led()
+            
             request = client.recv(1024).decode("utf-8")
             
             # Parse the request to get the path
@@ -505,7 +517,7 @@ def start_server(ip_address, port=80):
                     except:
                         pass
                 
-                if request_line.startswith('GET /boot '):
+                if request_line.startswith('GET /boot'):
                     print("Boot up Pi endpoint hit")
                     if verify_passcode(passcode):
                         status = handle_boot_pi()

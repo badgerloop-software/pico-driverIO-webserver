@@ -5,6 +5,8 @@ BSR Driver IO Remote Control - Allows for remote boot control of Pi 4
 
 This MicroPython project runs on a Raspberry Pi Pico W and provides a web-based dashboard for remotely controlling a Raspberry Pi 4. It features passcode authentication and safety checks to prevent accidental resets.
 
+![Image of Remote Control Application](Images/menu_image.png "Remote Control Application")
+
 ## Project Structure
 
 ### Root Files (to be flashed to Pico W)
@@ -24,7 +26,7 @@ This MicroPython project runs on a Raspberry Pi Pico W and provides a web-based 
 
 ### 1. Configure WiFi Credentials
 
-Edit `wifi_config.txt` with your WiFi network details:
+Make a file named `wifi_config.txt` and edit it with your WiFi network details:
 
 ```
 SSID=your_wifi_ssid
@@ -33,7 +35,7 @@ PASSWORD=your_wifi_password
 
 ### 2. Configure Driver IO Settings
 
-Edit `driverio_config.txt` with your Pi 4 details:
+Make a file called `driverio_config.txt` and edit it with your Pi 4 details. You can set any six digit pin you'd like:
 
 ```
 DRIVERIO_IP=10.42.0.18

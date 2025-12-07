@@ -38,7 +38,7 @@ PASSWORD=your_wifi_password
 Make a file called `driverio_config.txt` and edit it with your Pi 4 details. You can set any six digit pin you'd like:
 
 ```
-DRIVERIO_IP=10.42.0.18
+DRIVERIO_IP=10.XX.X.XX
 DRIVERIO_USER=your_username
 DRIVERIO_PASS=your_password
 PASSCODE=123456
@@ -74,7 +74,7 @@ The script will automatically run when the Pico W boots. It will:
 
 ### 6. Access the Dashboard
 
-Open a web browser and navigate to the Pico's IP address (e.g., `http://192.168.1.110`).
+Open a web browser and navigate to the Pico's IP address (e.g., `http://192.XXX.X.XXX`).
 
 ## Web Dashboard Features
 
